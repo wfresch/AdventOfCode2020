@@ -60,32 +60,53 @@ namespace Code
 
     class GroupAnswers
     {
-        public HashSet<char> UniqueAnswers { get; set; }
+        public List<UniqueAnswer> UniqueAnswers { get; set; }
 
         public GroupAnswers()
         {
-            UniqueAnswers = new HashSet<char>();
+            UniqueAnswers = new List<UniqueAnswer> 
+            {
+                new UniqueAnswer('a'), new UniqueAnswer('b'), new UniqueAnswer('c'), new UniqueAnswer('d'), new UniqueAnswer('e'), new UniqueAnswer('f'),
+                new UniqueAnswer('g'), new UniqueAnswer('h'), new UniqueAnswer('i'), new UniqueAnswer('j'), new UniqueAnswer('k'), new UniqueAnswer('l'),
+                new UniqueAnswer('m'), new UniqueAnswer('n'), new UniqueAnswer('o'), new UniqueAnswer('p'), new UniqueAnswer('q'), new UniqueAnswer('r'),
+                new UniqueAnswer('s'), new UniqueAnswer('t'), new UniqueAnswer('u'), new UniqueAnswer('v'), new UniqueAnswer('w'), new UniqueAnswer('x'),
+                new UniqueAnswer('y'), new UniqueAnswer('z')
+            };
         }
-        // public GroupAnswers(string firstSetOfAnswers)
-        // {
-        //     UniqueAnswers = new HashSet<char>();
-
-        //     AddSetOfAnswers(firstSetOfAnswers);
-        // }
-
+        
         public void AddSetOfAnswers(string setOfAnswers)
         {
-            foreach(var answer in setOfAnswers)
+            foreach(var answer in UniqueAnswers)
             {
-                UniqueAnswers.Add(answer);
+                if (!setOfAnswers.Contains(answer.Answer))
+                {
+                    answer.MarkInvalid();
+                }
             }
         }
 
         public int GetUniqueAnswerCount()
         {
-            return UniqueAnswers.Count;
+            return UniqueAnswers.Count(x => x.Valid);
         } 
         
+    }
+
+    class UniqueAnswer
+    {
+        public char Answer { get; private set; }
+        public bool Valid { get; private set; }
+
+        public UniqueAnswer(char answer)
+        {
+            Answer = answer;
+            Valid = true;
+        }
+
+        public void MarkInvalid()
+        {
+            Valid = false;
+        }
     }
 
 }
