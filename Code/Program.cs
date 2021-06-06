@@ -6,89 +6,86 @@ namespace Code
 {
     class Program
     {
-        private static List<Seat> _seats;
-        private static Seat[] _sortedSeats;
+        private static Stack<GroupAnswers> _stackOfGroups;
         
         static void Main(string[] args)
         {
-            var seatLines = System.IO.File.ReadLines("../Input/5.txt");
-            _seats = new List<Seat>();
-            BuildSeats(seatLines);
-            SortSeats();
-
-            Console.WriteLine(FindMissingSeat());
+            var groupLines = System.IO.File.ReadLines("../Input/6.txt");
+            _stackOfGroups = new Stack<GroupAnswers>();
+            BuildGroups(groupLines);
+            
+            Console.WriteLine(GetTotalUniqueAnswers());
                                     
             Console.WriteLine("Press any key to exit.");
             System.Console.ReadKey();
         }
 
-        private static void BuildSeats(IEnumerable<string> seatLines)
+        private static void BuildGroups(IEnumerable<string> groupLines)
         {
-            foreach(var seatLine in seatLines)
-            {
-                var seat = new Seat(seatLine);
-                _seats.Add(seat);
-            }
-        }
+            AddNewGroupOfAnswers();
 
-        private static void SortSeats()
-        {
-            _sortedSeats = new Seat[_seats.Count()];
-            var sortedSeatList = _seats.OrderBy(x => x.SeatId);
-            var cursor = 0;
-
-            foreach(var sortedSeat in sortedSeatList)
+            foreach(var groupLine in groupLines)
             {
-                _sortedSeats[cursor] = sortedSeat;
-                cursor++;
-            }
-        }
-
-        private static int FindMissingSeat()
-        {
-            for(int i = 0; i < _sortedSeats.Length - 1; i ++)
-            {
-                if(_sortedSeats[i].SeatId + 1 != _sortedSeats[i + 1].SeatId)
+                if (String.IsNullOrEmpty(groupLine))
                 {
-                    //Console.WriteLine($"Current seat is id {_sortedSeats[i].SeatId}, and next seat is id {_sortedSeats[i + 1].SeatId}.");
-
-                    return _sortedSeats[i].SeatId + 1;
+                    AddNewGroupOfAnswers();
+                }
+                else 
+                {
+                    var currentGroup = _stackOfGroups.Peek();
+                    currentGroup.AddSetOfAnswers(groupLine);
                 }
             }
-            return -1;
-        }
-    }
-
-    class Seat
-    {
-        public int Row { get; private set; }
-        public int Column { get; private set; }
-        public int SeatId { get; private set; }
-
-        public Seat(string seatCode)
-        {
-            var rowCode = seatCode.Substring(0, 7);
-            var rowBinary = ConvertCodeToBinary(rowCode, 'B', 'F');
-            Row = Convert.ToInt32(rowBinary, 2);
-
-            var columnCode = seatCode.Substring(7);
-            var columnBinary = ConvertCodeToBinary(columnCode, 'R', 'L');
-            Column = Convert.ToInt32(columnBinary, 2);
-
-            SeatId = (Row * 8) + Column;
         }
 
-        private string ConvertCodeToBinary(string input, char upper, char lower)
+        private static void AddNewGroupOfAnswers()
         {
-            string output = "";
+            var newGroup = new GroupAnswers();
+            _stackOfGroups.Push(newGroup);
+        }
 
-            foreach(char inputCharacter in input)
+        private static int GetTotalUniqueAnswers()
+        {
+            var sum = 0;
+
+            foreach(var groupOfAnswers in _stackOfGroups)
             {
-                output += (inputCharacter == upper) ? "1" : "0";
+                sum += groupOfAnswers.GetUniqueAnswerCount();
             }
 
-            return output;
+            return sum;
         }
+        
+    }
+
+    class GroupAnswers
+    {
+        public HashSet<char> UniqueAnswers { get; set; }
+
+        public GroupAnswers()
+        {
+            UniqueAnswers = new HashSet<char>();
+        }
+        // public GroupAnswers(string firstSetOfAnswers)
+        // {
+        //     UniqueAnswers = new HashSet<char>();
+
+        //     AddSetOfAnswers(firstSetOfAnswers);
+        // }
+
+        public void AddSetOfAnswers(string setOfAnswers)
+        {
+            foreach(var answer in setOfAnswers)
+            {
+                UniqueAnswers.Add(answer);
+            }
+        }
+
+        public int GetUniqueAnswerCount()
+        {
+            return UniqueAnswers.Count;
+        } 
+        
     }
 
 }

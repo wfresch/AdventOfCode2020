@@ -147,7 +147,7 @@ namespace Code
             }
             else if (units == "in" && (numericPortionOfHeight < 59 || numericPortionOfHeight > 76))
             {
-                results.Add(new ValidationResult("Height must be between 59 and 76cm"));
+                results.Add(new ValidationResult("Height must be between 59 and 76in"));
             }
 
             //EYE COLOR
