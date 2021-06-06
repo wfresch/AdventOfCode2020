@@ -1,162 +1,94 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.ComponentModel.DataAnnotations;
 
 namespace Code
 {
     class Program
     {
-        private static Stack<Passport> _passports;
-
+        private static List<Seat> _seats;
+        private static Seat[] _sortedSeats;
+        
         static void Main(string[] args)
         {
-            var passportLines = System.IO.File.ReadLines("../Input/4.txt");
-            _passports = new Stack<Passport>();
-            AddBlankPassport();
-            BuildPassports(passportLines);
-            Console.WriteLine(CountValidPassports());
+            var seatLines = System.IO.File.ReadLines("../Input/5.txt");
+            _seats = new List<Seat>();
+            BuildSeats(seatLines);
+            SortSeats();
+
+            Console.WriteLine(FindMissingSeat());
                                     
             Console.WriteLine("Press any key to exit.");
             System.Console.ReadKey();
         }
 
-        private static void AddBlankPassport()
+        private static void BuildSeats(IEnumerable<string> seatLines)
         {
-            var passport = new Passport();
-            _passports.Push(passport);
-        }
-
-        private static void BuildPassports(IEnumerable<string> passportLines)
-        {
-            foreach(var passportLine in passportLines)
+            foreach(var seatLine in seatLines)
             {
-                if (String.IsNullOrEmpty(passportLine))
-                {
-                    AddBlankPassport();
-                }
-                else
-                {
-                    var currentPassport = _passports.Peek();
-                    currentPassport.AddCredentials(passportLine);
-                }
+                var seat = new Seat(seatLine);
+                _seats.Add(seat);
             }
         }
 
-        private static int CountValidPassports()
+        private static void SortSeats()
         {
-            var validCount = 0;
+            _sortedSeats = new Seat[_seats.Count()];
+            var sortedSeatList = _seats.OrderBy(x => x.SeatId);
+            var cursor = 0;
 
-            foreach(var passport in _passports)
+            foreach(var sortedSeat in sortedSeatList)
             {
-                var context = new ValidationContext(passport, serviceProvider: null, items: null);
-                var results = new List<ValidationResult>();
-
-                var isValid = Validator.TryValidateObject(passport, context, results, true);
-
-                validCount += (isValid ? 1 : 0);
+                _sortedSeats[cursor] = sortedSeat;
+                cursor++;
             }
-
-            return validCount;
         }
-        
+
+        private static int FindMissingSeat()
+        {
+            for(int i = 0; i < _sortedSeats.Length - 1; i ++)
+            {
+                if(_sortedSeats[i].SeatId + 1 != _sortedSeats[i + 1].SeatId)
+                {
+                    //Console.WriteLine($"Current seat is id {_sortedSeats[i].SeatId}, and next seat is id {_sortedSeats[i + 1].SeatId}.");
+
+                    return _sortedSeats[i].SeatId + 1;
+                }
+            }
+            return -1;
+        }
     }
 
-    class Passport : IValidatableObject
+    class Seat
     {
-        [Range(1920, 2002)]
-        public int BirthYear { get; set; }
-        [Range(2010, 2020)]
-        public int IssueYear { get; set; }
-        [Range(2020, 2030)]
-        public int ExpirationYear { get; set; }
-        [Required, RegularExpression(@"^[0-9]{2,3}(cm|in)$")]
-        public string Height { get; set; }
-        [Required, RegularExpression(@"^\#[0-9,a-f]{6}$")]
-        public string HairColor { get; set; }
-        [Required, RegularExpression(@"^(amb|blu|brn|gry|grn|hzl|oth){1}$")]
-        public string EyeColor { get; set; }
-        [Required, RegularExpression(@"^[0-9]{9}$")]
-        public string PassportId { get; set; }
-        public int CountryId { get; set; }
+        public int Row { get; private set; }
+        public int Column { get; private set; }
+        public int SeatId { get; private set; }
 
-        public void AddCredentials(string inputLine)
+        public Seat(string seatCode)
         {
-            var inputSections = inputLine.Split(' ');
-            
-            foreach(var inputSection in inputSections)
-            {
-                var keyValuePair = inputSection.Split(':');
-                var key = keyValuePair[0];
-                var value = keyValuePair[1];
+            var rowCode = seatCode.Substring(0, 7);
+            var rowBinary = ConvertCodeToBinary(rowCode, 'B', 'F');
+            Row = Convert.ToInt32(rowBinary, 2);
 
-                switch(key) 
-                {
-                    case "byr":
-                        BirthYear = int.Parse(value);
-                        break;
-                    case "iyr":
-                        IssueYear = int.Parse(value);
-                        break;
-                    case "eyr":
-                        ExpirationYear = int.Parse(value);
-                        break;
-                    case "hgt":
-                        Height = value;
-                        break;
-                    case "hcl":
-                        HairColor = value;
-                        break;
-                    case "ecl":
-                        EyeColor = value;
-                        break;
-                    case "pid":
-                        PassportId = (value);
-                        break;
-                    case "cid":
-                        CountryId = int.Parse(value);
-                        break;
-                }
-            }
+            var columnCode = seatCode.Substring(7);
+            var columnBinary = ConvertCodeToBinary(columnCode, 'R', 'L');
+            Column = Convert.ToInt32(columnBinary, 2);
+
+            SeatId = (Row * 8) + Column;
         }
 
-        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        private string ConvertCodeToBinary(string input, char upper, char lower)
         {
-            var results = new List<ValidationResult>();
-            
-            var heightSplit = 0;
-            for (int i = 0; i < Height.Length; i ++)
+            string output = "";
+
+            foreach(char inputCharacter in input)
             {
-                if (!int.TryParse(Height[i].ToString(), out var number))
-                {
-                    heightSplit = i;
-                    break;
-                }
+                output += (inputCharacter == upper) ? "1" : "0";
             }
 
-            var heightValueString = Height.Substring(0, heightSplit);
-            //Console.WriteLine($"Grabbed {heightValueString} out of {Height}.");
-            var heightValue = int.Parse(heightValueString);
-            var heightUnits = Height.Substring(heightSplit);
-
-            if (heightUnits != "cm" && heightUnits != "in")
-            {
-                var result = new ValidationResult("Height must be in cm or in.");
-                results.Add(result);
-            }
-            else if (heightUnits == "cm" && (heightValue < 150 || heightValue > 193))
-            {
-                var result = new ValidationResult("Height must be between 150 and 193 cm.");
-                results.Add(result);
-            }
-            else if (heightUnits == "in" && (heightValue < 59 || heightValue > 76))
-            {
-                var result = new ValidationResult("Height must be between 59 and 76 in.");
-                results.Add(result);
-            }
-
-            return results;
+            return output;
         }
-
     }
+
 }
