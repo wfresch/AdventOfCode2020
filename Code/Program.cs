@@ -6,106 +6,124 @@ namespace Code
 {
     class Program
     {
-        private static Stack<GroupAnswers> _stackOfGroups;
+        private static List<Bag> _bags;
+        
+        //private static List<Bag> _bagsInside;
+        private static int _count;
         
         static void Main(string[] args)
         {
-            var groupLines = System.IO.File.ReadLines("../Input/6.txt");
-            _stackOfGroups = new Stack<GroupAnswers>();
-            BuildGroups(groupLines);
+            //var bagLines = System.IO.File.ReadLines("../Input/7.txt");
+            //var bagLines = System.IO.File.ReadLines("../Input/7.txt");
+            var bagLines = System.IO.File.ReadLines("../Input/7b_practice.txt");
             
-            Console.WriteLine(GetTotalUniqueAnswers());
+            _bags = new List<Bag>();
+            //_bagsInside = new List<Bag>();
+            _count = 0;
+            
+            BuildBags(bagLines);
+            //Console.WriteLine(CountBagsInside("shiny gold", 1));
+            CountBagsInside("shiny gold", 1);
+            Console.WriteLine(_count);
                                     
             Console.WriteLine("Press any key to exit.");
             System.Console.ReadKey();
         }
 
-        private static void BuildGroups(IEnumerable<string> groupLines)
+        private static void BuildBags(IEnumerable<string> bagLines)
         {
-            AddNewGroupOfAnswers();
-
-            foreach(var groupLine in groupLines)
+            foreach(var bagLine in bagLines)
             {
-                if (String.IsNullOrEmpty(groupLine))
+                var bag = new Bag(bagLine);
+                _bags.Add(bag);
+            }
+        }
+
+        // private static int CountBagsInside(string color, int numberOfBags)
+        // {
+        //     Console.WriteLine($"Counting bags inside of {color}.");
+
+        //     //var count = 0;
+        //     var bag = _bags.First(x => x.Color == color);
+        //     if (bag.Bags.Count == 0)
+        //     {
+        //         return 0;
+        //     }
+
+        //     var count = 0;
+        //     foreach(var bagInside in bag.Bags)
+        //     {
+        //         var number = bagInside.Number;
+        //         //var numberOfBagsInside = 
+        //         count += (numberOfBags * CountBagsInside(bagInside.Color, number));
+        //     }
+
+        //     return count;
+        // }
+
+        private static void CountBagsInside(string color, int numberOfBags)
+        {
+            //Console.WriteLine($"Counting bags inside of {color}.");
+
+            var bag = _bags.First(x => x.Color == color);
+            if (bag.Bags.Count == 0)
+            {
+                return;
+            }
+
+            foreach(var bagInside in bag.Bags)
+            {
+                var number = bagInside.Number;
+                _count += (numberOfBags * number);
+                CountBagsInside(bagInside.Color, number);
+            }
+        }
+
+    }
+
+    class Bag
+    {
+        public int Number { get; set; }
+        public string Color { get; set; }
+        public List<Bag> Bags { get; set; }
+
+        public Bag(string input)
+        {
+            Number = 1;
+
+            var inputParts = input.Split(" bags contain ");
+            Color = inputParts[0];
+            //Console.WriteLine(Color);
+
+            var contents = inputParts[1];
+            var contentParts = contents.Split(", ");
+            Bags = new List<Bag>();
+
+            foreach(var content in contentParts)
+            {
+                var bagParts = content.Split(' ');
+
+                if ($"{bagParts[0]} {bagParts[1]}" == "no other")
                 {
-                    AddNewGroupOfAnswers();
+                    break;
                 }
                 else 
                 {
-                    var currentGroup = _stackOfGroups.Peek();
-                    currentGroup.AddSetOfAnswers(groupLine);
+                    var bagCount = int.Parse(bagParts[0]);
+                    var bagColor = $"{bagParts[1]} {bagParts[2]}";
+                    //Console.WriteLine($"Adding {bagCount} {bagColor} bag(s) to {Color}.");
+                    var bag = new Bag(bagColor, bagCount);
+                    Bags.Add(bag);
                 }
             }
+            
         }
 
-        private static void AddNewGroupOfAnswers()
+        public Bag(string color, int count)
         {
-            var newGroup = new GroupAnswers();
-            _stackOfGroups.Push(newGroup);
-        }
-
-        private static int GetTotalUniqueAnswers()
-        {
-            var sum = 0;
-
-            foreach(var groupOfAnswers in _stackOfGroups)
-            {
-                sum += groupOfAnswers.GetUniqueAnswerCount();
-            }
-
-            return sum;
-        }
-        
-    }
-
-    class GroupAnswers
-    {
-        public List<UniqueAnswer> UniqueAnswers { get; set; }
-
-        public GroupAnswers()
-        {
-            UniqueAnswers = new List<UniqueAnswer> 
-            {
-                new UniqueAnswer('a'), new UniqueAnswer('b'), new UniqueAnswer('c'), new UniqueAnswer('d'), new UniqueAnswer('e'), new UniqueAnswer('f'),
-                new UniqueAnswer('g'), new UniqueAnswer('h'), new UniqueAnswer('i'), new UniqueAnswer('j'), new UniqueAnswer('k'), new UniqueAnswer('l'),
-                new UniqueAnswer('m'), new UniqueAnswer('n'), new UniqueAnswer('o'), new UniqueAnswer('p'), new UniqueAnswer('q'), new UniqueAnswer('r'),
-                new UniqueAnswer('s'), new UniqueAnswer('t'), new UniqueAnswer('u'), new UniqueAnswer('v'), new UniqueAnswer('w'), new UniqueAnswer('x'),
-                new UniqueAnswer('y'), new UniqueAnswer('z')
-            };
-        }
-        
-        public void AddSetOfAnswers(string setOfAnswers)
-        {
-            foreach(var answer in UniqueAnswers)
-            {
-                if (!setOfAnswers.Contains(answer.Answer))
-                {
-                    answer.MarkInvalid();
-                }
-            }
-        }
-
-        public int GetUniqueAnswerCount()
-        {
-            return UniqueAnswers.Count(x => x.Valid);
-        } 
-        
-    }
-
-    class UniqueAnswer
-    {
-        public char Answer { get; private set; }
-        public bool Valid { get; private set; }
-
-        public UniqueAnswer(char answer)
-        {
-            Answer = answer;
-            Valid = true;
-        }
-
-        public void MarkInvalid()
-        {
-            Valid = false;
+            Number = count;
+            Color = color;
+            Bags = new List<Bag>();
         }
     }
 
