@@ -6,125 +6,169 @@ namespace Code
 {
     class Program
     {
-        private static List<Bag> _bags;
-        
-        //private static List<Bag> _bagsInside;
-        private static int _count;
+        private static ProgramInstruction[] _programInstructions;
         
         static void Main(string[] args)
         {
-            //var bagLines = System.IO.File.ReadLines("../Input/7.txt");
-            //var bagLines = System.IO.File.ReadLines("../Input/7.txt");
-            var bagLines = System.IO.File.ReadLines("../Input/7b_practice.txt");
+            //var programInstructionLines = System.IO.File.ReadLines("../Input/8_practice.txt");
+            var programInstructionLines = System.IO.File.ReadLines("../Input/8.txt");
+                        
+            _programInstructions = new ProgramInstruction[programInstructionLines.Count()];
             
-            _bags = new List<Bag>();
-            //_bagsInside = new List<Bag>();
-            _count = 0;
-            
-            BuildBags(bagLines);
-            //Console.WriteLine(CountBagsInside("shiny gold", 1));
-            CountBagsInside("shiny gold", 1);
-            Console.WriteLine(_count);
+            BuildProgramInstructions(programInstructionLines);
+            Console.WriteLine(RunIterations());
                                     
             Console.WriteLine("Press any key to exit.");
             System.Console.ReadKey();
         }
 
-        private static void BuildBags(IEnumerable<string> bagLines)
+        private static void BuildProgramInstructions(IEnumerable<string> programInstructionLines)
         {
-            foreach(var bagLine in bagLines)
+            var counter = 0;
+
+            foreach(var programInstructionLine in programInstructionLines)
             {
-                var bag = new Bag(bagLine);
-                _bags.Add(bag);
+                var programInstruction = new ProgramInstruction(programInstructionLine);
+                _programInstructions[counter] = programInstruction;
+                counter++;
             }
         }
 
-        // private static int CountBagsInside(string color, int numberOfBags)
-        // {
-        //     Console.WriteLine($"Counting bags inside of {color}.");
-
-        //     //var count = 0;
-        //     var bag = _bags.First(x => x.Color == color);
-        //     if (bag.Bags.Count == 0)
-        //     {
-        //         return 0;
-        //     }
-
-        //     var count = 0;
-        //     foreach(var bagInside in bag.Bags)
-        //     {
-        //         var number = bagInside.Number;
-        //         //var numberOfBagsInside = 
-        //         count += (numberOfBags * CountBagsInside(bagInside.Color, number));
-        //     }
-
-        //     return count;
-        // }
-
-        private static void CountBagsInside(string color, int numberOfBags)
+        private static bool ExecuteProgram(out int accumulatorValue)
         {
-            //Console.WriteLine($"Counting bags inside of {color}.");
+            var cursor = 0;
+            accumulatorValue = 0;
 
-            var bag = _bags.First(x => x.Color == color);
-            if (bag.Bags.Count == 0)
+            while(true)
             {
-                return;
-            }
+                var programInstruction = _programInstructions[cursor];
+                programInstruction.MarkVisited();
 
-            foreach(var bagInside in bag.Bags)
-            {
-                var number = bagInside.Number;
-                _count += (numberOfBags * number);
-                CountBagsInside(bagInside.Color, number);
+                switch(programInstruction.OperationType)
+                {
+                    case (Operation.Accumulate):
+                        accumulatorValue += programInstruction.Argument;
+                        cursor++;
+                        break;
+                    case (Operation.Jump):
+                        cursor += programInstruction.Argument;
+                        break;
+                    case (Operation.NoOperation):
+                        cursor++;
+                        break;
+                    default:
+                        break;                    
+                }
+
+                if (cursor > (_programInstructions.Count() - 1))
+                {
+                    return true;
+                }
+                
+                if (_programInstructions[cursor].Visited)
+                {
+                    return false;
+                }
             }
         }
 
+        private static int RunIterations()
+        {
+            var iterations = _programInstructions.Count();
+            var accumulatorValue = -1;
+
+            for (int i = 0; i < _programInstructions.Count(); i ++)
+            {
+                ResetVisits();
+                var operation = _programInstructions[i].OperationType;
+
+                switch(operation)
+                {
+                    case Operation.Jump:
+                    case Operation.NoOperation:
+                        _programInstructions[i].ToggleOperation();
+                        if (ExecuteProgram(out accumulatorValue))
+                        {
+                            return accumulatorValue;
+                        }
+                        else
+                        {
+                            _programInstructions[i].ToggleOperation();
+                        }
+                        break;
+                    case Operation.Accumulate:
+                    default:
+                        break;
+                }
+            }
+
+            return accumulatorValue;
+        }
+
+        private static void ResetVisits()
+        {
+            for (int i = 0; i < _programInstructions.Count(); i ++)
+            {
+                _programInstructions[i].ResetVisits();
+            }
+        }
     }
 
-    class Bag
+    class ProgramInstruction
     {
-        public int Number { get; set; }
-        public string Color { get; set; }
-        public List<Bag> Bags { get; set; }
+        public Operation OperationType { get; private set; }
+        public int Argument { get; private set; }
+        public bool Visited { get; private set; }
 
-        public Bag(string input)
+        public ProgramInstruction(string input)
         {
-            Number = 1;
+            Visited = false;
 
-            var inputParts = input.Split(" bags contain ");
-            Color = inputParts[0];
-            //Console.WriteLine(Color);
+            var inputParts = input.Split(' ');
 
-            var contents = inputParts[1];
-            var contentParts = contents.Split(", ");
-            Bags = new List<Bag>();
-
-            foreach(var content in contentParts)
+            var operationName = inputParts[0];
+            switch(operationName)
             {
-                var bagParts = content.Split(' ');
-
-                if ($"{bagParts[0]} {bagParts[1]}" == "no other")
-                {
+                case "acc":
+                    OperationType = Operation.Accumulate;
                     break;
-                }
-                else 
-                {
-                    var bagCount = int.Parse(bagParts[0]);
-                    var bagColor = $"{bagParts[1]} {bagParts[2]}";
-                    //Console.WriteLine($"Adding {bagCount} {bagColor} bag(s) to {Color}.");
-                    var bag = new Bag(bagColor, bagCount);
-                    Bags.Add(bag);
-                }
+                case "jmp":
+                    OperationType = Operation.Jump;
+                    break;
+                case "nop":
+                    OperationType = Operation.NoOperation;
+                    break;
+                default:
+                    break;
             }
-            
+
+            var argumentString = inputParts[1];
+            Argument = int.Parse(argumentString);
         }
 
-        public Bag(string color, int count)
+        public void MarkVisited()
         {
-            Number = count;
-            Color = color;
-            Bags = new List<Bag>();
+            Visited = true;
         }
+
+        public void ResetVisits()
+        {
+            Visited = false;
+        }
+
+        public void ToggleOperation()
+        {
+            OperationType = (OperationType == Operation.Jump) ? 
+                Operation.NoOperation : 
+                Operation.Jump;
+        }
+    }
+
+    enum Operation
+    {
+        Accumulate,
+        Jump,
+        NoOperation
     }
 
 }
