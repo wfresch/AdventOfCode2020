@@ -6,169 +6,258 @@ namespace Code
 {
     class Program
     {
-        private static ProgramInstruction[] _programInstructions;
+        private static int[] _joltages;
+        private static Stack<SubGroup> _subGroups;
         
         static void Main(string[] args)
         {
-            //var programInstructionLines = System.IO.File.ReadLines("../Input/8_practice.txt");
-            var programInstructionLines = System.IO.File.ReadLines("../Input/8.txt");
+            //var joltageLines = System.IO.File.ReadLines("../Input/10.txt");
+            var joltageLines = System.IO.File.ReadLines("../Input/10_practice_001c.txt");
+            //var joltageLines = System.IO.File.ReadLines("../Input/10_practice_alternate.txt");
                         
-            _programInstructions = new ProgramInstruction[programInstructionLines.Count()];
-            
-            BuildProgramInstructions(programInstructionLines);
-            Console.WriteLine(RunIterations());
-                                    
+            _joltages = new int[joltageLines.Count()];
+            _subGroups = new Stack<SubGroup>();
+                        
+            BuildJoltages(joltageLines);
+            Console.WriteLine(FindJoltageCombinations());
+                                                
             Console.WriteLine("Press any key to exit.");
             System.Console.ReadKey();
         }
 
-        private static void BuildProgramInstructions(IEnumerable<string> programInstructionLines)
+        private static void BuildJoltages(IEnumerable<string> joltageLines)
         {
-            var counter = 0;
+            var unsortedJoltages = new List<int>();
+            unsortedJoltages.Add(0);
 
-            foreach(var programInstructionLine in programInstructionLines)
+            foreach(var joltageLine in joltageLines)
             {
-                var programInstruction = new ProgramInstruction(programInstructionLine);
-                _programInstructions[counter] = programInstruction;
-                counter++;
+                var joltage = int.Parse(joltageLine);
+                unsortedJoltages.Add(joltage);
             }
+
+            unsortedJoltages.Sort();
+            var max = unsortedJoltages.Last();
+            unsortedJoltages.Add(max + 3);
+
+            _joltages = unsortedJoltages.ToArray();
         }
 
-        private static bool ExecuteProgram(out int accumulatorValue)
+        private static int FindJoltageDistribution()
+        {
+            var oneJoltageDiffs = 0;
+            var threeJoltageDiffs = 0;
+
+            for (int i = 0; i < _joltages.Length - 1; i ++)
+            {
+                var joltage = _joltages[i];
+                var next = _joltages[i + 1];
+                var diff = next - joltage;
+
+                if (diff == 1)
+                {
+                    oneJoltageDiffs++;
+                }
+                else if (diff == 3)
+                {
+                    threeJoltageDiffs++;
+                }
+            }
+
+            return oneJoltageDiffs * (threeJoltageDiffs + 1);
+        }
+        private static int FindJoltageCombinations()
+        {
+            //return AddJoltageCombinations(0, 0);
+            //return _combinations;
+
+            // BUILD STACK OF LISTS (or possibly arrays)
+            // need a stack of lists
+            // standard for-loop
+            // add current item to list at top of stack
+            // if (i+1) minus i is >= 3
+            //     create new list and push to top of stack
+            BuildSubgroups();
+
+            // HELPER METHOD FOR EACH LIST
+            // Call recursive method to get combinations for that list
+            // Store number in a List of ints
+            AssignSubgroupCombinations();
+
+            // Loop through List of ints and multiply
+            return CalculateTotalCombinations();
+
+
+            //return -1;
+        }
+
+        private static void BuildSubgroups()
+        {
+            AddNewSubgroup();
+
+            for (int i = 0; i < _joltages.Length - 1; i ++)
+            {
+                InsertNumberIntoCurrentSubgroup(_joltages[i]);
+
+                if (_joltages[i+1] - _joltages[i] >= 3)
+                {
+                    AddNewSubgroup();
+                }
+            }
+
+            InsertNumberIntoCurrentSubgroup(_joltages[_joltages.Length - 1]);
+
+            Console.WriteLine($"Number of subgroups: {_subGroups.Count()}");
+        }
+
+        private static void AddNewSubgroup()
+        {
+            var subgroup = new SubGroup();
+            _subGroups.Push(subgroup);
+        }
+
+        private static void InsertNumberIntoCurrentSubgroup(int number)
+        {
+            var currentSubgroup = _subGroups.Peek();
+            currentSubgroup.AddNumber(number);
+        }
+
+        private static void AssignSubgroupCombinations()
         {
             var cursor = 0;
-            accumulatorValue = 0;
 
-            while(true)
+            foreach(var subgroup in _subGroups)
             {
-                var programInstruction = _programInstructions[cursor];
-                programInstruction.MarkVisited();
+                subgroup.GetCombinations();
 
-                switch(programInstruction.OperationType)
+                var subGroupContents = "";
+                foreach(var number in subgroup.Numbers)
                 {
-                    case (Operation.Accumulate):
-                        accumulatorValue += programInstruction.Argument;
-                        cursor++;
-                        break;
-                    case (Operation.Jump):
-                        cursor += programInstruction.Argument;
-                        break;
-                    case (Operation.NoOperation):
-                        cursor++;
-                        break;
-                    default:
-                        break;                    
+                    subGroupContents += $"{number},";
                 }
+                subGroupContents.Trim(',');
 
-                if (cursor > (_programInstructions.Count() - 1))
-                {
-                    return true;
-                }
-                
-                if (_programInstructions[cursor].Visited)
-                {
-                    return false;
-                }
+                Console.WriteLine($"Combinations for subgroup[{cursor}] {{{subGroupContents}}}: {subgroup.Combinations}.");
+                cursor++;
             }
         }
 
-        private static int RunIterations()
+        private static int CalculateTotalCombinations()
         {
-            var iterations = _programInstructions.Count();
-            var accumulatorValue = -1;
+            var combinations = 1;
 
-            for (int i = 0; i < _programInstructions.Count(); i ++)
+            foreach(var subgroup in _subGroups)
             {
-                ResetVisits();
-                var operation = _programInstructions[i].OperationType;
-
-                switch(operation)
-                {
-                    case Operation.Jump:
-                    case Operation.NoOperation:
-                        _programInstructions[i].ToggleOperation();
-                        if (ExecuteProgram(out accumulatorValue))
-                        {
-                            return accumulatorValue;
-                        }
-                        else
-                        {
-                            _programInstructions[i].ToggleOperation();
-                        }
-                        break;
-                    case Operation.Accumulate:
-                    default:
-                        break;
-                }
+                // var currentCombinations = subgroup.Combinations + 1;
+                // combinations *= currentCombinations;
+                combinations *= Math.Max(1, subgroup.Combinations);
             }
 
-            return accumulatorValue;
+            return combinations;
         }
-
-        private static void ResetVisits()
-        {
-            for (int i = 0; i < _programInstructions.Count(); i ++)
-            {
-                _programInstructions[i].ResetVisits();
-            }
-        }
+        
     }
 
-    class ProgramInstruction
+    class SubGroup
     {
-        public Operation OperationType { get; private set; }
-        public int Argument { get; private set; }
-        public bool Visited { get; private set; }
+        public List<int> Numbers { get; set; }
+        private int[] Joltages { get; set; }
+        public int Combinations { get; private set; }
 
-        public ProgramInstruction(string input)
+        public Dictionary<int, int> CombinationLookup { get; set; }
+
+        public SubGroup()
         {
-            Visited = false;
+            Numbers = new List<int>();
+            CombinationLookup = new Dictionary<int, int>();
+        }
 
-            var inputParts = input.Split(' ');
+        public void AddNumber(int number)
+        {
+            Numbers.Add(number);
+        }
 
-            var operationName = inputParts[0];
-            switch(operationName)
+        public void GetCombinations()
+        {
+            Joltages = Numbers.ToArray();
+            //Combinations = AddCombinations(0);
+            Combinations = PathsRemaining(0);
+        }
+
+        private int PathsRemaining(int cursor)
+        {
+            if (cursor == (Joltages.Length - 1))
             {
-                case "acc":
-                    OperationType = Operation.Accumulate;
-                    break;
-                case "jmp":
-                    OperationType = Operation.Jump;
-                    break;
-                case "nop":
-                    OperationType = Operation.NoOperation;
-                    break;
-                default:
-                    break;
+                return 1;
             }
 
-            var argumentString = inputParts[1];
-            Argument = int.Parse(argumentString);
+            var sum = 0;
+
+            var test = Math.Min(cursor + 4, Joltages.Length);
+            Console.WriteLine($"test: {test}");
+
+            for (int i = cursor + 1; i <= Math.Min(cursor + 3, Joltages.Length); i ++)
+            {
+                if (Joltages[i] - Joltages[cursor] <= 3)
+                {
+                    sum += PathsRemaining(i);
+                }
+            }
+
+            return sum;
         }
 
-        public void MarkVisited()
-        {
-            Visited = true;
-        }
+        // private int AddCombinations(int cursor)
+        // {
+        //     var combinations = 0;
+            
+        //     if (Joltages.Length <= 2)
+        //     {
+        //         //Console.WriteLine($"For {Joltages[cursor]}, possible combinations is automatically 1.");
+        //         return 1;
+        //     }
 
-        public void ResetVisits()
-        {
-            Visited = false;
-        }
+        //     if (cursor == (Joltages.Length - 1))
+        //     {
+        //         Console.WriteLine($"Automatically returning zero for {Joltages[cursor]}.");
+        //         return 0;
+        //     }
 
-        public void ToggleOperation()
-        {
-            OperationType = (OperationType == Operation.Jump) ? 
-                Operation.NoOperation : 
-                Operation.Jump;
-        }
+        //     for (int i = 1; i <= 3; i ++)
+        //     {
+        //         //Console.WriteLine($"AddCombinations loop for {Joltages[cursor]}, i={i}");
+
+        //         if ((cursor + i) < (Joltages.Length))
+        //         {
+        //             var difference = Joltages[cursor + i] - Joltages[cursor];
+        //             //Console.WriteLine($"At cursor {cursor}, diff of {difference} for {Joltages[cursor+i]} - {Joltages[cursor]}.");
+
+        //             if (difference < 3)
+        //             {
+        //                 //Console.WriteLine($"The difference of {Joltages[cursor+i]} - {Joltages[cursor]} = {difference}");
+        //                 combinations++;
+        //                 //Console.WriteLine($"combinations for {Joltages[cursor]} incremented by one to {combinations}.");
+
+        //                 combinations += AddCombinations(cursor + i);
+        //                 //Console.WriteLine($"combinations for {Joltages[cursor]} incremented after AddCombinations to {combinations}.");
+        //             }
+        //             else
+        //             {
+        //                 //Console.WriteLine($"The difference of {Joltages[cursor+i]} - {Joltages[i]} = {difference}");
+        //             }
+        //         }
+        //         else
+        //         {
+        //             //Console.WriteLine($"Skipping because {cursor+i} is >= {Joltages.Length}.");
+        //             break;
+        //         }
+        //     }
+
+        //     //combinations = Math.Max(1, combinations);
+        //     Console.WriteLine($"Combinations for {Joltages[cursor]}: {combinations}.");
+        //     return combinations;
+        //     //return parent ? combinations : (combinations - 1);
+        // }
+        
     }
-
-    enum Operation
-    {
-        Accumulate,
-        Jump,
-        NoOperation
-    }
-
 }
