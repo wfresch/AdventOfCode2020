@@ -7,17 +7,18 @@ namespace Code
     class Program
     {
         private static int[] _joltages;
+        private static Dictionary<int, long> _combinations;
         
         static void Main(string[] args)
         {
-            var joltageLines = System.IO.File.ReadLines("../Input/10_practice_001.txt");
-            //var joltageLines = System.IO.File.ReadLines("../Input/10.txt");
+            var joltageLines = System.IO.File.ReadLines("../Input/10.txt");
                         
             _joltages = new int[joltageLines.Count()];
-            
+            _combinations = new Dictionary<int, long>();
+                        
             BuildJoltages(joltageLines);
-            Console.WriteLine(FindTotalCombinations());
-                                    
+            Console.WriteLine(FindJoltageCombinations(0));
+                                                
             Console.WriteLine("Press any key to exit.");
             System.Console.ReadKey();
         }
@@ -34,64 +35,50 @@ namespace Code
             }
 
             unsortedJoltages.Sort();
+            var max = unsortedJoltages.Last();
+            unsortedJoltages.Add(max + 3);
+
             _joltages = unsortedJoltages.ToArray();
         }
 
-        private static int FindJoltageDistribution()
+        private static long FindJoltageCombinations(int cursor)
         {
-            var oneJoltageDiffs = 0;
-            var threeJoltageDiffs = 0;
-
-            for (int i = 0; i < _joltages.Length - 1; i ++)
+            if (_combinations.ContainsKey(cursor) && _combinations.TryGetValue(cursor, out var existingCombinationValue))
             {
-                var joltage = _joltages[i];
-                var next = _joltages[i + 1];
-                var diff = next - joltage;
+                return existingCombinationValue;
+            }
 
-                if (diff == 1)
+            if (cursor >= (_joltages.Length - 2))
+            {
+                return StoreAndReturnCombination(cursor, 1);
+            }
+
+            long combinations = 0;
+
+            for (int i = cursor + 1; i < Math.Min(cursor + 4, _joltages.Length); i++)
+            {
+                var difference = _joltages[i] - _joltages[cursor];
+
+                if (difference <= 3)
                 {
-                    //Console.WriteLine($"{next} - {joltage} = one");
-                    oneJoltageDiffs++;
+                    combinations += FindJoltageCombinations(i);
                 }
-                else if (diff == 3)
+                else
                 {
-                    //Console.WriteLine($"{next} - {joltage} = three");
-                    threeJoltageDiffs++;
+                    break;
                 }
             }
 
-            //Console.WriteLine($"oneJoltageDiffs: {oneJoltageDiffs}, threeJoltageDiffs: {threeJoltageDiffs}");
-            return oneJoltageDiffs * (threeJoltageDiffs + 1);
+            //Console.WriteLine($"Setting {combinations} combinations for cursor {cursor} (ie - {_joltages[cursor]}).");
+            return StoreAndReturnCombination(cursor, combinations);
         }
 
-        private static int FindJoltageCombinations()
+        private static long StoreAndReturnCombination(int cursor, long combinationValue)
         {
-            var totalCombinations = 1;
-
-            for (int i = 0; i < _joltages.Length; i ++)
-            {
-                var currentJoltage = _joltages[i];
-                var currentJumps = -1;
-
-                for (int j = 1; j <= 3; j ++)
-                {
-                    var index = i + j;
-                    
-                    if (index > (_joltages.Length - 1))
-                    {
-                        break;
-                    }
-
-                    if (_joltages[index] - currentJoltage <= 3)
-                    {
-                        currentJumps++;
-                    }
-                }
-
-                totalCombinations += currentJumps;
-            }
-
-            return totalCombinations;
+            _combinations.Add(cursor, combinationValue);
+            return combinationValue;
         }
+
     }
+        
 }

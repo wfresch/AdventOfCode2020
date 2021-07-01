@@ -7,19 +7,17 @@ namespace Code
     class Program
     {
         private static int[] _joltages;
-        private static Stack<SubGroup> _subGroups;
+        private static Dictionary<int, long> _combinations;
         
         static void Main(string[] args)
         {
-            //var joltageLines = System.IO.File.ReadLines("../Input/10.txt");
-            var joltageLines = System.IO.File.ReadLines("../Input/10_practice_001c.txt");
-            //var joltageLines = System.IO.File.ReadLines("../Input/10_practice_alternate.txt");
+            var joltageLines = System.IO.File.ReadLines("../Input/10.txt");
                         
             _joltages = new int[joltageLines.Count()];
-            _subGroups = new Stack<SubGroup>();
+            _combinations = new Dictionary<int, long>();
                         
             BuildJoltages(joltageLines);
-            Console.WriteLine(FindJoltageCombinations());
+            Console.WriteLine(FindJoltageCombinations(0));
                                                 
             Console.WriteLine("Press any key to exit.");
             System.Console.ReadKey();
@@ -43,221 +41,44 @@ namespace Code
             _joltages = unsortedJoltages.ToArray();
         }
 
-        private static int FindJoltageDistribution()
+        private static long FindJoltageCombinations(int cursor)
         {
-            var oneJoltageDiffs = 0;
-            var threeJoltageDiffs = 0;
-
-            for (int i = 0; i < _joltages.Length - 1; i ++)
+            if (_combinations.ContainsKey(cursor) && _combinations.TryGetValue(cursor, out var existingCombinationValue))
             {
-                var joltage = _joltages[i];
-                var next = _joltages[i + 1];
-                var diff = next - joltage;
-
-                if (diff == 1)
-                {
-                    oneJoltageDiffs++;
-                }
-                else if (diff == 3)
-                {
-                    threeJoltageDiffs++;
-                }
+                return existingCombinationValue;
             }
 
-            return oneJoltageDiffs * (threeJoltageDiffs + 1);
-        }
-        private static int FindJoltageCombinations()
-        {
-            //return AddJoltageCombinations(0, 0);
-            //return _combinations;
-
-            // BUILD STACK OF LISTS (or possibly arrays)
-            // need a stack of lists
-            // standard for-loop
-            // add current item to list at top of stack
-            // if (i+1) minus i is >= 3
-            //     create new list and push to top of stack
-            BuildSubgroups();
-
-            // HELPER METHOD FOR EACH LIST
-            // Call recursive method to get combinations for that list
-            // Store number in a List of ints
-            AssignSubgroupCombinations();
-
-            // Loop through List of ints and multiply
-            return CalculateTotalCombinations();
-
-
-            //return -1;
-        }
-
-        private static void BuildSubgroups()
-        {
-            AddNewSubgroup();
-
-            for (int i = 0; i < _joltages.Length - 1; i ++)
+            if (cursor >= (_joltages.Length - 2))
             {
-                InsertNumberIntoCurrentSubgroup(_joltages[i]);
+                return StoreAndReturnCombination(cursor, 1);
+            }
 
-                if (_joltages[i+1] - _joltages[i] >= 3)
+            long combinations = 0;
+
+            for (int i = cursor + 1; i < Math.Min(cursor + 4, _joltages.Length); i++)
+            {
+                var difference = _joltages[i] - _joltages[cursor];
+
+                if (difference <= 3)
                 {
-                    AddNewSubgroup();
+                    combinations += FindJoltageCombinations(i);
+                }
+                else
+                {
+                    break;
                 }
             }
 
-            InsertNumberIntoCurrentSubgroup(_joltages[_joltages.Length - 1]);
-
-            Console.WriteLine($"Number of subgroups: {_subGroups.Count()}");
+            //Console.WriteLine($"Setting {combinations} combinations for cursor {cursor} (ie - {_joltages[cursor]}).");
+            return StoreAndReturnCombination(cursor, combinations);
         }
 
-        private static void AddNewSubgroup()
+        private static long StoreAndReturnCombination(int cursor, long combinationValue)
         {
-            var subgroup = new SubGroup();
-            _subGroups.Push(subgroup);
+            _combinations.Add(cursor, combinationValue);
+            return combinationValue;
         }
 
-        private static void InsertNumberIntoCurrentSubgroup(int number)
-        {
-            var currentSubgroup = _subGroups.Peek();
-            currentSubgroup.AddNumber(number);
-        }
-
-        private static void AssignSubgroupCombinations()
-        {
-            var cursor = 0;
-
-            foreach(var subgroup in _subGroups)
-            {
-                subgroup.GetCombinations();
-
-                var subGroupContents = "";
-                foreach(var number in subgroup.Numbers)
-                {
-                    subGroupContents += $"{number},";
-                }
-                subGroupContents.Trim(',');
-
-                Console.WriteLine($"Combinations for subgroup[{cursor}] {{{subGroupContents}}}: {subgroup.Combinations}.");
-                cursor++;
-            }
-        }
-
-        private static int CalculateTotalCombinations()
-        {
-            var combinations = 1;
-
-            foreach(var subgroup in _subGroups)
-            {
-                // var currentCombinations = subgroup.Combinations + 1;
-                // combinations *= currentCombinations;
-                combinations *= Math.Max(1, subgroup.Combinations);
-            }
-
-            return combinations;
-        }
-        
     }
-
-    class SubGroup
-    {
-        public List<int> Numbers { get; set; }
-        private int[] Joltages { get; set; }
-        public int Combinations { get; private set; }
-
-        public Dictionary<int, int> CombinationLookup { get; set; }
-
-        public SubGroup()
-        {
-            Numbers = new List<int>();
-            CombinationLookup = new Dictionary<int, int>();
-        }
-
-        public void AddNumber(int number)
-        {
-            Numbers.Add(number);
-        }
-
-        public void GetCombinations()
-        {
-            Joltages = Numbers.ToArray();
-            //Combinations = AddCombinations(0);
-            Combinations = PathsRemaining(0);
-        }
-
-        private int PathsRemaining(int cursor)
-        {
-            if (cursor == (Joltages.Length - 1))
-            {
-                return 1;
-            }
-
-            var sum = 0;
-
-            var test = Math.Min(cursor + 4, Joltages.Length);
-            Console.WriteLine($"test: {test}");
-
-            for (int i = cursor + 1; i <= Math.Min(cursor + 3, Joltages.Length); i ++)
-            {
-                if (Joltages[i] - Joltages[cursor] <= 3)
-                {
-                    sum += PathsRemaining(i);
-                }
-            }
-
-            return sum;
-        }
-
-        // private int AddCombinations(int cursor)
-        // {
-        //     var combinations = 0;
-            
-        //     if (Joltages.Length <= 2)
-        //     {
-        //         //Console.WriteLine($"For {Joltages[cursor]}, possible combinations is automatically 1.");
-        //         return 1;
-        //     }
-
-        //     if (cursor == (Joltages.Length - 1))
-        //     {
-        //         Console.WriteLine($"Automatically returning zero for {Joltages[cursor]}.");
-        //         return 0;
-        //     }
-
-        //     for (int i = 1; i <= 3; i ++)
-        //     {
-        //         //Console.WriteLine($"AddCombinations loop for {Joltages[cursor]}, i={i}");
-
-        //         if ((cursor + i) < (Joltages.Length))
-        //         {
-        //             var difference = Joltages[cursor + i] - Joltages[cursor];
-        //             //Console.WriteLine($"At cursor {cursor}, diff of {difference} for {Joltages[cursor+i]} - {Joltages[cursor]}.");
-
-        //             if (difference < 3)
-        //             {
-        //                 //Console.WriteLine($"The difference of {Joltages[cursor+i]} - {Joltages[cursor]} = {difference}");
-        //                 combinations++;
-        //                 //Console.WriteLine($"combinations for {Joltages[cursor]} incremented by one to {combinations}.");
-
-        //                 combinations += AddCombinations(cursor + i);
-        //                 //Console.WriteLine($"combinations for {Joltages[cursor]} incremented after AddCombinations to {combinations}.");
-        //             }
-        //             else
-        //             {
-        //                 //Console.WriteLine($"The difference of {Joltages[cursor+i]} - {Joltages[i]} = {difference}");
-        //             }
-        //         }
-        //         else
-        //         {
-        //             //Console.WriteLine($"Skipping because {cursor+i} is >= {Joltages.Length}.");
-        //             break;
-        //         }
-        //     }
-
-        //     //combinations = Math.Max(1, combinations);
-        //     Console.WriteLine($"Combinations for {Joltages[cursor]}: {combinations}.");
-        //     return combinations;
-        //     //return parent ? combinations : (combinations - 1);
-        // }
         
-    }
 }
