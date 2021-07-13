@@ -23,17 +23,12 @@ namespace Code
 
         static void RunSimulations()
         {
-            //Console.WriteLine("RunSimulations()");
             var changes = -1;
             var guardrail = 0;
 
             while (changes != 0 && guardrail <= 1000)
             {
-                //_flight.PrintSeats();
-                
                 changes = _flight.RunSimulationRound();
-                // Console.WriteLine($"changes is now: {changes}.");
-                // Console.WriteLine($"guardrail is currently: {guardrail}.");
 
                 if (changes != 0)
                 {
@@ -41,12 +36,6 @@ namespace Code
                 }
 
                 guardrail++;
-                
-                // if (guardrail == 1)
-                // {
-                //     _flight.PrintSeats();
-                // }
-                //Console.WriteLine($"guardrail is now: {guardrail}.");
             }
         }
 
@@ -61,7 +50,6 @@ namespace Code
         public int Columns { get; private set; }
 
         public Flight(IEnumerable<string> inputs) {
-            //Console.WriteLine($"Creating a new Flight.");
             Rows = inputs.Count();
 
             if (Rows == 0)
@@ -71,7 +59,6 @@ namespace Code
 
             Columns = inputs.ElementAt(0).Length;
 
-            //Console.WriteLine($"Creating new Seats array w/ {Rows} rows and {Columns} columns.");
             Seats = new Seat[Rows, Columns];
             var currentRow = 0;
             var currentColumn = 0;
@@ -92,7 +79,6 @@ namespace Code
 
         public int RunSimulationRound()
         {
-            //Console.WriteLine("RunSimulationRound()");
             var changes = 0;
 
             for (int i = 0; i < Rows; i ++) 
@@ -118,7 +104,6 @@ namespace Code
             {
                 for (int j = 0; j < Columns; j ++)
                 {
-                    //Console.WriteLine($"Status for row {i}, column {j} was {Seats[i,j].Status.ToString()}, and will now be {Seats[i,j].FutureStatus}.");
                     Seats[i, j].Status = Seats[i, j].FutureStatus;
                 }
             }
@@ -126,65 +111,272 @@ namespace Code
 
         public SeatStatus SeatOutcome(int row, int column)
         {
-            //Console.WriteLine($"Calculating SeatOutcome for row {row}, column {column}.");
-
             var seat = Seats[row, column];
             var status = seat.Status;
 
-            if (seat.Status == SeatStatus.Empty && AdjacentSeatsOccupied(row, column) == 0)
+            if (seat.Status == SeatStatus.Empty && VisibleSeatsOccupied(row, column) == 0)
             {
-                //Console.WriteLine("SeatOutcome scenario 1");
                 seat.FutureStatus = SeatStatus.Occupied;
                 return SeatStatus.Occupied;
             }
 
-            if (seat.Status == SeatStatus.Occupied && AdjacentSeatsOccupied(row, column) >= 4)
+            if (seat.Status == SeatStatus.Occupied && VisibleSeatsOccupied(row, column) >= 5)
             {
-                //Console.WriteLine("SeatOutcome scenario 2");
                 seat.FutureStatus = SeatStatus.Empty;
                 return SeatStatus.Empty;
             }
 
-            //Console.WriteLine($"SeatOutcome scenario 3 for row {row} and column {column}; status is {status.ToString()}.");
             return status;
         }
 
         public int AdjacentSeatsOccupied(int row, int column)
         {
-            //Console.WriteLine($"Checking AdjacentSeatsOccupied for row {row}, column {column}.");
-
             var adjacentSeatsOccupied = 0;
 
-            var test1 = Math.Max(row - 1, 0);
-            var test2 = Math.Min(row + 1, Rows - 1);
-            var test3 = Math.Max(column - 1, 0);
-            var test4 = Math.Min(column + 1, Columns - 1);
-
-            //Console.WriteLine($"{test1}, {test2}, {test3}, {test4}");
-            
             for (int i = Math.Max(row - 1, 0); i <= Math.Min(row + 1, Rows - 1); i ++)
             {
-                //Console.WriteLine($"AdjacentSeatsOccupied for row {row}.");
-
                 for (int j = Math.Max(column - 1, 0); j <= Math.Min(column + 1, Columns - 1); j ++)
                 {
                     if (row == i && column == j)
                     {
-                        //Console.WriteLine($"AdjacentSeatsOccupied check for row {row}, column {column}, but i is {i} and j is {j}.");
                         continue;
                     }
 
-                    //var seat = Seats[row, column];
                     var seat = Seats[i, j];
 
                     adjacentSeatsOccupied += (seat.Status == SeatStatus.Occupied) ? 1 : 0;
                 }
             }
 
-            //Console.WriteLine($"adjacentSeatsOccupied for row {row}, column {column} is: {adjacentSeatsOccupied}.");
             return adjacentSeatsOccupied;
         }
 
+        public int VisibleSeatsOccupied(int row, int column)
+        {
+            return LookSideways(row, column) + LookVertically(row, column) + LookDiagonally(row, column);
+        }
+
+        public int LookSideways(int row, int column)
+        {
+            var horizontalOccupiedSeats = 0;
+
+            for (int j = Math.Max(column - 1, 0); j >= 0; j --)
+            {
+                if (j == column)
+                {
+                    continue;
+                }
+                
+                var seat = Seats[row, j];
+
+                if (seat.Status == SeatStatus.Empty)
+                {
+                    break;
+                }
+
+                if (seat.Status == SeatStatus.Occupied)
+                {
+                    horizontalOccupiedSeats++;
+                    break;
+                }
+            }
+
+            for (int j = Math.Min(column + 1, Columns - 1); j < Columns; j ++)
+            {
+                if (j == column)
+                {
+                    continue;
+                }
+                
+                var seat = Seats[row, j];
+
+                if (seat.Status == SeatStatus.Empty)
+                {
+                    break;
+                }
+
+                if (seat.Status == SeatStatus.Occupied)
+                {
+                    horizontalOccupiedSeats++;
+                    break;
+                }
+            }
+
+            return horizontalOccupiedSeats;
+        }
+
+        public int LookVertically(int row, int column)
+        {
+            var verticalOccupiedSeats = 0;
+
+            for (int i = Math.Max(row - 1, 0); i >= 0; i --)
+            {
+                if (i == row)
+                {
+                    continue;
+                }
+                
+                var seat = Seats[i, column];
+
+                if (seat.Status == SeatStatus.Empty)
+                {
+                    break;
+                }
+
+                if (seat.Status == SeatStatus.Occupied)
+                {
+                    verticalOccupiedSeats++;
+                    break;
+                }
+            }
+
+            for (int i = Math.Min(row + 1, Rows - 1); i < Rows; i ++)
+            {
+                if (i == row)
+                {
+                    continue;
+                }
+                
+                var seat = Seats[i, column];
+
+                if (seat.Status == SeatStatus.Empty)
+                {
+                    break;
+                }
+
+                if (seat.Status == SeatStatus.Occupied)
+                {
+                    verticalOccupiedSeats++;
+                    break;
+                }
+            }
+
+            return verticalOccupiedSeats;
+        }
+
+        public int LookDiagonally(int row, int column)
+        {
+            var diagonalOccupiedSeats = 0;
+
+            for (int i = Math.Max(row - 1, 0); i >= 0; i --)
+            {
+                if (i == row)
+                {
+                    continue;
+                }
+                
+                var rowDelta = Math.Abs(row - i);
+                var leftColumn = column - rowDelta;
+
+                if (leftColumn < 0)
+                {
+                    continue;
+                }
+
+                var seat = Seats[i, leftColumn];
+
+                if (seat.Status == SeatStatus.Empty)
+                {
+                    break;
+                }
+
+                if (seat.Status == SeatStatus.Occupied)
+                {
+                    diagonalOccupiedSeats++;
+                    break;
+                }
+            }
+
+            for (int i = Math.Max(row - 1, 0); i >= 0; i --)
+            {
+                if (i == row)
+                {
+                    continue;
+                }
+                
+                var rowDelta = Math.Abs(row - i);
+                var rightColumn = column + rowDelta;
+
+                if (rightColumn > (Columns - 1))
+                {
+                    continue;
+                }
+
+                var seat = Seats[i, rightColumn];
+
+                if (seat.Status == SeatStatus.Empty)
+                {
+                    break;
+                }
+
+                if (seat.Status == SeatStatus.Occupied)
+                {
+                    diagonalOccupiedSeats++;
+                    break;
+                }
+            }
+
+            for (int i = Math.Min(row + 1, Rows - 1); i < Rows; i ++)
+            {
+                if (i == row)
+                {
+                    continue;
+                }
+                
+                var rowDelta = Math.Abs(row - i);
+                var leftColumn = column - rowDelta;
+
+                if (leftColumn < 0)
+                {
+                    continue;
+                }
+
+                var seat = Seats[i, leftColumn];
+
+                if (seat.Status == SeatStatus.Empty)
+                {
+                    break;
+                }
+
+                if (seat.Status == SeatStatus.Occupied)
+                {
+                    diagonalOccupiedSeats++;
+                    break;
+                }
+            }
+
+            for (int i = Math.Min(row + 1, Rows - 1); i < Rows; i ++)
+            {
+                if (i == row)
+                {
+                    continue;
+                }
+                
+                var rowDelta = Math.Abs(row - i);
+                var rightColumn = column + rowDelta;
+
+                if (rightColumn > (Columns - 1))
+                {
+                    continue;
+                }
+
+                var seat = Seats[i, rightColumn];
+
+                if (seat.Status == SeatStatus.Empty)
+                {
+                    break;
+                }
+
+                if (seat.Status == SeatStatus.Occupied)
+                {
+                    diagonalOccupiedSeats++;
+                    break;
+                }
+            }
+
+            return diagonalOccupiedSeats;
+        }
+        
         public int CountOccupiedSeats()
         {
             var occupiedSeats = 0;
@@ -193,13 +385,7 @@ namespace Code
             {
                 for (int j = 0; j < Columns; j ++)
                 {
-                    // if (Seats[i,j].Status == SeatStatus.Occupied)
-                    // {
-                    //     Console.WriteLine($"Row {i}, Column {j} is Occupied");
-                    // }
-
                     occupiedSeats += (Seats[i, j].Status == SeatStatus.Occupied) ? 1 : 0;
-                    //Console.WriteLine($"occupiedSeats is currently: {occupiedSeats}.");
                 }
             }
 
@@ -228,8 +414,6 @@ namespace Code
 
         public Seat(char status)
         {
-            //Console.WriteLine($"Creating a new Seat w/ status of {status}");
-
             switch(status)
             {
                 case 'L':
@@ -250,8 +434,6 @@ namespace Code
 
         public char Print()
         {
-            //Console.WriteLine($"Printing {Status.ToString()}.");
-
             switch(Status)
             {
                 case SeatStatus.Empty:
