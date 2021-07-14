@@ -6,455 +6,206 @@ namespace Code
 {
     class Program
     {
-        private static Flight _flight;
+        private static Ship _ship;
         
         static void Main(string[] args)
         {
-            var flightRows = System.IO.File.ReadLines("../Input/11.txt");
-                        
-            _flight = new Flight(flightRows);
+            _ship = new Ship();
+            var instructionRows = System.IO.File.ReadLines("../Input/12.txt");
+            var instructions = new List<Instruction>();
+            
+            foreach(var row in instructionRows)
+            {
+                var instruction = new Instruction(row);
+                instructions.Add(instruction);
+            }
+
+            _ship.ProcessInstructions(instructions);
                                     
-            RunSimulations();
-            Console.WriteLine(_flight.CountOccupiedSeats());
+            Console.WriteLine(_ship.Location.GetManhattanDistance());
                                                 
             Console.WriteLine("Press any key to exit.");
             System.Console.ReadKey();
         }
 
-        static void RunSimulations()
-        {
-            var changes = -1;
-            var guardrail = 0;
-
-            while (changes != 0 && guardrail <= 1000)
-            {
-                changes = _flight.RunSimulationRound();
-
-                if (changes != 0)
-                {
-                    _flight.UpdateFlight();
-                }
-
-                guardrail++;
-            }
-        }
-
     }
 
-    class Flight
+    class Instruction
     {
-        public Seat[,] Seats { get; set; }
+        public InstructionType InstructionType { get; private set; }
+        public Direction? Direction { get; private set; }
+        public Rotation? Rotation { get; private set; }
 
-        public int Rows { get; private set; }
+        public int Units { get; private set; }
 
-        public int Columns { get; private set; }
-
-        public Flight(IEnumerable<string> inputs) {
-            Rows = inputs.Count();
-
-            if (Rows == 0)
-            {
-                return;
-            }
-
-            Columns = inputs.ElementAt(0).Length;
-
-            Seats = new Seat[Rows, Columns];
-            var currentRow = 0;
-            var currentColumn = 0;
-
-            foreach(var input in inputs)
-            {
-                currentColumn = 0;
-
-                foreach(var seat in input)
-                {
-                    Seats[currentRow, currentColumn] = new Seat(seat);
-                    currentColumn++;
-                }
-
-                currentRow++;
-            }
-        }
-
-        public int RunSimulationRound()
+        public Instruction(string instructionInput)
         {
-            var changes = 0;
-
-            for (int i = 0; i < Rows; i ++) 
+            var instructionType = instructionInput.Substring(0, 1);
+            switch(instructionType)
             {
-                for (int j = 0; j < Columns; j ++)
-                {
-                    var currentStatus = Seats[i, j].Status;
-                    var simulationStatus = SeatOutcome(i, j);
-
-                    if (currentStatus != simulationStatus)
-                    {
-                        changes++;
-                    }
-                }
+                case "F":
+                    InstructionType = InstructionType.MoveForward;
+                    break;
+                case "L":
+                    InstructionType = InstructionType.Rotate;
+                    Rotation = Code.Rotation.Left;
+                    break;
+                case "R":
+                    InstructionType = InstructionType.Rotate;
+                    Rotation = Code.Rotation.Right;
+                    break;
+                case "N":
+                    InstructionType = InstructionType.MoveByCompass;
+                    Direction = Code.Direction.North;
+                    break;
+                case "E":
+                    InstructionType = InstructionType.MoveByCompass;
+                    Direction = Code.Direction.East;
+                    break;
+                case "S":
+                    InstructionType = InstructionType.MoveByCompass;
+                    Direction = Code.Direction.South;
+                    break;
+                case "W":
+                    InstructionType = InstructionType.MoveByCompass;
+                    Direction = Code.Direction.West;
+                    break;
             }
-
-            return changes;
-        }
-
-        public void UpdateFlight()
-        {
-            for (int i = 0; i < Rows; i ++) 
-            {
-                for (int j = 0; j < Columns; j ++)
-                {
-                    Seats[i, j].Status = Seats[i, j].FutureStatus;
-                }
-            }
-        }
-
-        public SeatStatus SeatOutcome(int row, int column)
-        {
-            var seat = Seats[row, column];
-            var status = seat.Status;
-
-            if (seat.Status == SeatStatus.Empty && VisibleSeatsOccupied(row, column) == 0)
-            {
-                seat.FutureStatus = SeatStatus.Occupied;
-                return SeatStatus.Occupied;
-            }
-
-            if (seat.Status == SeatStatus.Occupied && VisibleSeatsOccupied(row, column) >= 5)
-            {
-                seat.FutureStatus = SeatStatus.Empty;
-                return SeatStatus.Empty;
-            }
-
-            return status;
-        }
-
-        public int AdjacentSeatsOccupied(int row, int column)
-        {
-            var adjacentSeatsOccupied = 0;
-
-            for (int i = Math.Max(row - 1, 0); i <= Math.Min(row + 1, Rows - 1); i ++)
-            {
-                for (int j = Math.Max(column - 1, 0); j <= Math.Min(column + 1, Columns - 1); j ++)
-                {
-                    if (row == i && column == j)
-                    {
-                        continue;
-                    }
-
-                    var seat = Seats[i, j];
-
-                    adjacentSeatsOccupied += (seat.Status == SeatStatus.Occupied) ? 1 : 0;
-                }
-            }
-
-            return adjacentSeatsOccupied;
-        }
-
-        public int VisibleSeatsOccupied(int row, int column)
-        {
-            return LookSideways(row, column) + LookVertically(row, column) + LookDiagonally(row, column);
-        }
-
-        public int LookSideways(int row, int column)
-        {
-            var horizontalOccupiedSeats = 0;
-
-            for (int j = Math.Max(column - 1, 0); j >= 0; j --)
-            {
-                if (j == column)
-                {
-                    continue;
-                }
-                
-                var seat = Seats[row, j];
-
-                if (seat.Status == SeatStatus.Empty)
-                {
-                    break;
-                }
-
-                if (seat.Status == SeatStatus.Occupied)
-                {
-                    horizontalOccupiedSeats++;
-                    break;
-                }
-            }
-
-            for (int j = Math.Min(column + 1, Columns - 1); j < Columns; j ++)
-            {
-                if (j == column)
-                {
-                    continue;
-                }
-                
-                var seat = Seats[row, j];
-
-                if (seat.Status == SeatStatus.Empty)
-                {
-                    break;
-                }
-
-                if (seat.Status == SeatStatus.Occupied)
-                {
-                    horizontalOccupiedSeats++;
-                    break;
-                }
-            }
-
-            return horizontalOccupiedSeats;
-        }
-
-        public int LookVertically(int row, int column)
-        {
-            var verticalOccupiedSeats = 0;
-
-            for (int i = Math.Max(row - 1, 0); i >= 0; i --)
-            {
-                if (i == row)
-                {
-                    continue;
-                }
-                
-                var seat = Seats[i, column];
-
-                if (seat.Status == SeatStatus.Empty)
-                {
-                    break;
-                }
-
-                if (seat.Status == SeatStatus.Occupied)
-                {
-                    verticalOccupiedSeats++;
-                    break;
-                }
-            }
-
-            for (int i = Math.Min(row + 1, Rows - 1); i < Rows; i ++)
-            {
-                if (i == row)
-                {
-                    continue;
-                }
-                
-                var seat = Seats[i, column];
-
-                if (seat.Status == SeatStatus.Empty)
-                {
-                    break;
-                }
-
-                if (seat.Status == SeatStatus.Occupied)
-                {
-                    verticalOccupiedSeats++;
-                    break;
-                }
-            }
-
-            return verticalOccupiedSeats;
-        }
-
-        public int LookDiagonally(int row, int column)
-        {
-            var diagonalOccupiedSeats = 0;
-
-            for (int i = Math.Max(row - 1, 0); i >= 0; i --)
-            {
-                if (i == row)
-                {
-                    continue;
-                }
-                
-                var rowDelta = Math.Abs(row - i);
-                var leftColumn = column - rowDelta;
-
-                if (leftColumn < 0)
-                {
-                    continue;
-                }
-
-                var seat = Seats[i, leftColumn];
-
-                if (seat.Status == SeatStatus.Empty)
-                {
-                    break;
-                }
-
-                if (seat.Status == SeatStatus.Occupied)
-                {
-                    diagonalOccupiedSeats++;
-                    break;
-                }
-            }
-
-            for (int i = Math.Max(row - 1, 0); i >= 0; i --)
-            {
-                if (i == row)
-                {
-                    continue;
-                }
-                
-                var rowDelta = Math.Abs(row - i);
-                var rightColumn = column + rowDelta;
-
-                if (rightColumn > (Columns - 1))
-                {
-                    continue;
-                }
-
-                var seat = Seats[i, rightColumn];
-
-                if (seat.Status == SeatStatus.Empty)
-                {
-                    break;
-                }
-
-                if (seat.Status == SeatStatus.Occupied)
-                {
-                    diagonalOccupiedSeats++;
-                    break;
-                }
-            }
-
-            for (int i = Math.Min(row + 1, Rows - 1); i < Rows; i ++)
-            {
-                if (i == row)
-                {
-                    continue;
-                }
-                
-                var rowDelta = Math.Abs(row - i);
-                var leftColumn = column - rowDelta;
-
-                if (leftColumn < 0)
-                {
-                    continue;
-                }
-
-                var seat = Seats[i, leftColumn];
-
-                if (seat.Status == SeatStatus.Empty)
-                {
-                    break;
-                }
-
-                if (seat.Status == SeatStatus.Occupied)
-                {
-                    diagonalOccupiedSeats++;
-                    break;
-                }
-            }
-
-            for (int i = Math.Min(row + 1, Rows - 1); i < Rows; i ++)
-            {
-                if (i == row)
-                {
-                    continue;
-                }
-                
-                var rowDelta = Math.Abs(row - i);
-                var rightColumn = column + rowDelta;
-
-                if (rightColumn > (Columns - 1))
-                {
-                    continue;
-                }
-
-                var seat = Seats[i, rightColumn];
-
-                if (seat.Status == SeatStatus.Empty)
-                {
-                    break;
-                }
-
-                if (seat.Status == SeatStatus.Occupied)
-                {
-                    diagonalOccupiedSeats++;
-                    break;
-                }
-            }
-
-            return diagonalOccupiedSeats;
-        }
-        
-        public int CountOccupiedSeats()
-        {
-            var occupiedSeats = 0;
-
-            for (int i = 0; i < Rows; i ++)
-            {
-                for (int j = 0; j < Columns; j ++)
-                {
-                    occupiedSeats += (Seats[i, j].Status == SeatStatus.Occupied) ? 1 : 0;
-                }
-            }
-
-            return occupiedSeats;
-        }
-
-        public void PrintSeats()
-        {
-            for (int i = 0; i < Rows; i ++)
-            {
-                var seatLine = "";
-
-                for (int j = 0; j < Columns; j ++)
-                {
-                    seatLine += Seats[i, j].Print();
-                }
-                Console.WriteLine(seatLine);
-            }
+            
+            
+            var units = instructionInput.Substring(1);
+            Units = Int32.Parse(units);
         }
     }
 
-    class Seat
+    class Ship
     {
-        public SeatStatus Status { get; set; }
-        public SeatStatus FutureStatus { get; set; }
+        public Direction Orientation { get; set; }
+        public Location Location { get; set; }
 
-        public Seat(char status)
+        public Ship()
         {
-            switch(status)
+            Orientation = Direction.East;
+            Location = new Location();
+        }
+
+        public void Turn(Rotation rotation, int degrees)
+        {
+            var quarterIncrements = degrees / 90;
+            var quarterTurns = quarterIncrements % 4;
+            
+            //Console.Write($"Rotating {rotation.ToString()} {degrees} degrees. ");
+
+            if (rotation == Rotation.Left)
             {
-                case 'L':
-                    Status = SeatStatus.Empty;
-                    FutureStatus = SeatStatus.Empty;
-                    break;
-                case '#':
-                    Status = SeatStatus.Occupied;
-                    FutureStatus = SeatStatus.Occupied;
-                    break;
-                case '.':
-                default:
-                    Status = SeatStatus.Floor;
-                    FutureStatus = SeatStatus.Floor;
-                    break;
+                quarterTurns *= -1;
+            }
+
+            var newOrientation = ((int) Orientation + quarterTurns);
+            
+            if (newOrientation > 3)
+            {
+                newOrientation -= 4;
+            }
+            else if (newOrientation < 0)
+            {
+                newOrientation += 4;
+            }
+
+            Orientation = (Direction) newOrientation;
+            //Console.WriteLine($"Orientation is now {Orientation.ToString()}");
+        }
+        public void Move(int units)
+        {
+            var direction = Orientation;
+            //Console.WriteLine($"Moving forward ({direction.ToString()}) {units} units.");
+
+            Move(direction, units);
+        }
+
+        public void Move(Direction direction, int units, bool log = false)
+        {
+            if (direction == Direction.South || direction == Direction.West)
+            {
+                units *= -1;
+            }
+
+            if (log)
+            {
+                //Console.WriteLine($"Moving {direction.ToString()} {units} units.");
+            }
+
+            if (direction == Direction.West || direction == Direction.East)
+            {
+                Location.x += units;
+            }
+            else
+            {
+                Location.y += units;
             }
         }
 
-        public char Print()
+        public void ProcessInstructions(List<Instruction> instructions)
         {
-            switch(Status)
+            foreach(var instruction in instructions)
             {
-                case SeatStatus.Empty:
-                    return 'L';
+                ProcessInstruction(instruction);
+            }
+        }
+
+        private void ProcessInstruction(Instruction instruction)
+        {
+            switch(instruction.InstructionType)
+            {
+                case InstructionType.MoveForward:
+                    Move(instruction.Units);
                     break;
-                case SeatStatus.Occupied:
-                    return '#';
+                case InstructionType.MoveByCompass:
+                    Move((Direction) instruction.Direction, instruction.Units, true);
                     break;
-                case SeatStatus.Floor:
-                default:
-                    return '.';
+                case InstructionType.Rotate:
+                    Turn((Rotation) instruction.Rotation, instruction.Units);
                     break;
             }
         }
     }
 
-    enum SeatStatus
+    class Location
     {
-        Empty = 0,
-        Occupied = 1,
-        Floor = 2
+        public int x { get; set; }
+        public int y { get; set; }
+
+        public Location()
+        {
+            x = 0;
+            y = 0;
+        }
+
+        public int GetManhattanDistance() 
+        {
+            return Math.Abs(x) + Math.Abs(y);
+        }
+    }
+    
+    enum InstructionType
+    {
+        MoveForward = 0,
+        Rotate = 1,
+        MoveByCompass = 2
+    }
+
+    enum Direction
+    {
+        North = 0,
+        East = 1,
+        South = 2,
+        West = 3
+    }
+
+    enum Rotation
+    {
+        Left = 0,
+        Right = 1
     }
         
 }
